@@ -22,7 +22,8 @@ namespace Microsoft.AspNetCore.SpaServices.ReactDevelopmentServer
 
         public static void Attach(
             ISpaBuilder spaBuilder,
-            string npmScriptName)
+            string npmScriptName,
+            bool forwardToConsole = false)
         {
             var sourcePath = spaBuilder.Options.SourcePath;
             if (string.IsNullOrEmpty(sourcePath))
@@ -38,7 +39,7 @@ namespace Microsoft.AspNetCore.SpaServices.ReactDevelopmentServer
             // Start create-react-app and attach to middleware pipeline
             var appBuilder = spaBuilder.ApplicationBuilder;
             var logger = LoggerFinder.GetOrCreateLogger(appBuilder, LogCategoryName);
-            var portTask = StartCreateReactAppServerAsync(sourcePath, npmScriptName, logger);
+            var portTask = StartCreateReactAppServerAsync(sourcePath, npmScriptName, logger, forwardToConsole);
 
             // Everything we proxy is hardcoded to target http://localhost because:
             // - the requests are always from the local machine (we're not accepting remote
@@ -61,7 +62,7 @@ namespace Microsoft.AspNetCore.SpaServices.ReactDevelopmentServer
         }
 
         private static async Task<int> StartCreateReactAppServerAsync(
-            string sourcePath, string npmScriptName, ILogger logger)
+            string sourcePath, string npmScriptName, ILogger logger, bool forwardToConsole)
         {
             var portNumber = TcpPortFinder.FindAvailablePort();
             logger.LogInformation($"Starting create-react-app server on port {portNumber}...");
@@ -73,7 +74,14 @@ namespace Microsoft.AspNetCore.SpaServices.ReactDevelopmentServer
             };
             var npmScriptRunner = new NpmScriptRunner(
                 sourcePath, npmScriptName, null, envVars);
-            npmScriptRunner.AttachToLogger(logger);
+            if (forwardToConsole)
+            {
+                npmScriptRunner.AttachToConsole();
+            }
+            else
+            {
+                npmScriptRunner.AttachToLogger(logger);
+            }
 
             using (var stdErrReader = new EventedStreamStringReader(npmScriptRunner.StdErr))
             {

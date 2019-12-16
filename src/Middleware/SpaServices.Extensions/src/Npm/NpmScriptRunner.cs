@@ -35,15 +35,15 @@ namespace Microsoft.AspNetCore.NodeServices.Npm
                 throw new ArgumentException("Cannot be null or empty.", nameof(scriptName));
             }
 
-            var npmExe = "npm";
-            var completeArguments = $"run {scriptName} -- {arguments ?? string.Empty}";
+            var npmExe = "yarn";
+            var completeArguments = $"{scriptName} --color {arguments ?? string.Empty}";
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 // On Windows, the NPM executable is a .cmd file, so it can't be executed
                 // directly (except with UseShellExecute=true, but that's no good, because
                 // it prevents capturing stdio). So we need to invoke it via "cmd /c".
                 npmExe = "cmd";
-                completeArguments = $"/c npm {completeArguments}";
+                completeArguments = $"/c yarn {completeArguments}";
             }
 
             var processStartInfo = new ProcessStartInfo(npmExe)
@@ -100,6 +100,20 @@ namespace Microsoft.AspNetCore.NodeServices.Npm
                 {
                     Console.Write(chunk.Array, chunk.Offset, chunk.Count);
                 }
+            };
+        }
+
+        public void AttachToConsole()
+        {
+            // When console forwarding is enabled, just transfer chunks directly to console
+            StdOut.OnReceivedChunk += chunk =>
+            {
+                Console.Write(chunk.Array, chunk.Offset, chunk.Count);
+            };
+
+            StdErr.OnReceivedChunk += chunk =>
+            {
+                Console.Error.Write(chunk.Array, chunk.Offset, chunk.Count);
             };
         }
 
